@@ -1,0 +1,51 @@
+name: Build Song Widget
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
+
+      - name: Descomprimir proyecto
+        run: |
+          unzip -q SongWidgetProject.zip -d project
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar proyecto Xcode
+        working-directory: project/SongWidgetProject
+        run: xcodegen generate
+
+      - name: Compilar app
+        working-directory: project/SongWidgetProject
+        run: |
+          xcodebuild \
+            -project SongWidget.xcodeproj \
+            -scheme SongWidget \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Crear IPA
+        working-directory: project/SongWidgetProject
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/SongWidget.app Payload/
+          zip -qr SongWidget-unsigned.ipa Payload
+
+      - name: Guardar IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SongWidget-unsigned-ipa
+          path: project/SongWidgetProject/SongWidget-unsigned.ipa
